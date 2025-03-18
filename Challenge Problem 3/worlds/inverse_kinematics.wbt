@@ -6,6 +6,9 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/floors/protos/Floor.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/robots/franka_emika/panda/protos/Panda.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/school_furniture/protos/Blackboard.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/robots/franka_emika/panda/protos/PandaHand.proto" #added this line so that it can access the hand
+
+
 
 WorldInfo {
 }
@@ -37,11 +40,11 @@ DEF panda Panda {
     }
   ]
 }
-Robot {
-  name "supervisor"
-  controller "panda_robo_5000_supervisor"
-  supervisor TRUE
-}
+#Robot {
+#  name "supervisor"
+#  controller "panda_robo_5000_supervisor"
+#  supervisor TRUE
+#}
 Floor {
   size 50 50
 }
