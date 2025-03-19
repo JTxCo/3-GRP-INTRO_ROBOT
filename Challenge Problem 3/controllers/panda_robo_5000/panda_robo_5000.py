@@ -12,16 +12,20 @@ class PandaController(Robot):
         # Setup robot config
         self.TIME_STEP = 32
         self.MAX_VELOCITY = 0.5
-        
+                
         # Get all motors and sensors ready
         self.init_robot_components()
         
-        # Where the blackboard is - might need to adjust
-        self.blackboard_position = [0.5, 0, 0.5]
+        #Updated position to what is found in the .wbt file: Blackboard { translation 0.65 0 0.7 rotation 0 0 1 3.14159 }
+        # updated to be relative to the blackboard and robot
+        self.blackboard_position = [0.65, 0, .49]
+        
+        # Z offset to raise up the points, will be adjusted. Trying to not have the arm go into the floor
+        self.z_offset = 1
         
         # Create path points for CU and buffalo
-        self.cu_points = self.make_cu_points()
-        self.buffalo_points = self.make_buffalo_outline()
+        self.cu_points = self.rotate_z(self.make_cu_points(), math.pi)
+        self.buffalo_points = self.rotate_z(self.make_buffalo_outline(), math.pi)
         
     def init_robot_components(self):
         # Get all 7 motors for the arm
@@ -32,16 +36,36 @@ class PandaController(Robot):
             self.motors.append(motor)
         
         # Set up the pen (finger joint)
-        self.finger = self.getDevice("panda_finger_joint1")
-        self.finger.setPosition(0.04)
+        self.pen = self.getDevice("pen")
+
+        # if self.pen is not None:
+        #     print(f"Pen device found at {type(self.pen)}")
+        #     self.pen.setPosition(0.04)
+    
+    
+    def rotate_z(self, points, angle_rad):
+        # rotates a list of points around the z-axis by the given angle in radians
         
+        # Create rotation matrix
+        rot = np.array([
+            [math.cos(angle_rad), -math.sin(angle_rad), 0],
+            [math.sin(angle_rad), math.cos(angle_rad), 0],
+            [0, 0, 1]
+        ])
+        
+        # Rotate each point and return
+        return [ rot @ np.array(p) for p in points ] 
+        
+    
+    
+       
     def make_cu_points(self):
         # Making C shape
         c_points = []
         r = 0.05  # size of letters
         c_center = [self.blackboard_position[0] - 0.08, 
                   self.blackboard_position[1], 
-                  self.blackboard_position[2]]
+                  self.blackboard_position[2] + self.z_offset]
         
         # Create C using arc points
         for t in np.linspace(0.8 * math.pi, -0.8 * math.pi, 20):
@@ -83,7 +107,7 @@ class PandaController(Robot):
         # Put the buffalo below the CU
         center = [self.blackboard_position[0], 
                 self.blackboard_position[1], 
-                self.blackboard_position[2] - 0.15]
+                self.blackboard_position[2] - 0.15 + self.z_offset]
         
         buffalo_points = []
         
@@ -207,9 +231,9 @@ class PandaController(Robot):
         pos = self.fk_solver(current_joints)
         
         # IK solver parameters
-        max_iter = 100
-        tol = 0.001
-        damp = 0.01  # Damping for stability
+        max_iter = 200 # Converge more quickly
+        tol = 0.005
+        damp = 0.02  # Damping for stability
         
         for iter in range(max_iter):
             # Error between current and target positions
@@ -255,8 +279,9 @@ class PandaController(Robot):
         for i, angle in enumerate(joints):
             self.motors[i].setPosition(angle)
         
-        # Let the movement finish
-        self.step(self.TIME_STEP * 5)
+        # Let the movement finish, UPDATED: making sure steps finish appropriately
+        for _ in range(5):
+            self.step(self.TIME_STEP)
         
         return joints
     
@@ -267,18 +292,40 @@ class PandaController(Robot):
         # Then draw through all other points
         for p in points[1:]:
             prev = self.move_arm(p, prev)
-            
+    def list_devices(self):
+        num_devices = self.getNumberOfDevices()
+        print(f"Total number of devices: {num_devices}")
+        print("Listing all devices:")
+        for i in range(num_devices):
+            device = self.getDeviceByIndex(i)
+            if device:
+                print(f"Device {i+1}: {device.getName()}")
+            else:
+                print(f"Device {i+1}: None")   
+    def test_single_point(self):
+        target_point = [0.5, 0, 0.3]  # Adjusted for relative positioning and rotation
+        print(f"Testing single point: {target_point}")
+        joints = self.move_arm(target_point)
+        print(f"Achieved joints: {joints}")
+    
     def run(self):
         print("Starting to draw CU")
+        self.list_devices()        
         
-        # Draw CU letters
+        # print("Testing single point")
+        # self.test_single_point()
+        
+        
+        # # Draw CU letters
         self.draw(self.cu_points)
         
         print("Drawing buffalo logo")
         # Draw buffalo logo
         self.draw(self.buffalo_points)
         
-        print("Drawing finished!")
+        # print("Drawing finished!")
+
+
 
 # Start the controller
 if __name__ == "__main__":
